@@ -6,7 +6,7 @@ unit cmd;
 interface
 uses btree,crt,regexpr;
 var
-    y_lstr, c_lstr: integer;
+    y_lstr, c_lstr,buf_size: integer;
     symbols: set Of Char;
     lstr: AnsiString;
     cmd_list: array[1..6] of ansistring;
@@ -58,17 +58,18 @@ var
 begin
     if not ExecRegExpr('(tree$)|' + number, arg) then
         WriteLn('Invalid parameter')
-    else if arg = 'tree' then
-        delete_tree(my_tree)
     else
-    begin
-        Val(arg,i);
-        str(i,s);
-        if s = arg then
-            delete_item(i,my_tree)
+        if arg = 'tree' then
+            delete_tree(my_tree)
         else
-            WriteLn('Not an integer');
-    end;
+        begin
+            Val(arg,i);
+            str(i,s);
+            if s = arg then
+                delete_item(i,my_tree)
+            else
+                WriteLn('Not an integer');
+        end;
 end;
 
 procedure insert_f(arg: string);
@@ -143,7 +144,7 @@ var
 procedure cmd_exec();
 begin
     if not ExecRegExpr('(clearscr|help|print|delete|insert|find)((\s.*)|$)',cmd) then
-        writeln(#10#13,'    Command   *',lstr,'*  not found')
+        writeln(#10#13,'Command   *',lstr,'*  not found')
     else
     begin
         if cmd = 'delete' then
@@ -180,42 +181,24 @@ end;
 
 procedure setxy();
 begin
-    gotoxy(1 + (c_lstr mod 80),y_lstr + (c_lstr div 80));
+    gotoxy(1 + (c_lstr mod buf_size),y_lstr + (c_lstr div buf_size));
 end;
 
 procedure setcp();
 begin
-    c_lstr := 80 * (wherey - y_lstr) + wherex;
+    c_lstr := buf_size * (wherey - y_lstr) + wherex;
 end;
 
 procedure dp();
 begin
-    for i:=0 to Length(lstr) div 80 do
+    for i:=0 to Length(lstr) div buf_size do
     begin
         gotoxy(1,y_lstr + i);
         delline;
     end;
     gotoxy(1,y_lstr);
-        Write(lstr);
+    Write(lstr);
 end;
-
-procedure tab();
-var
-    s: ansistring;
-begin
-    s := lstr;
-    del_spaces(s);
-    for i:=1 to 6 do
-    begin
-        if pos(s,cmd_list[i]) = 1 then //Если нашли команду в списке команд
-        begin
-            lstr := cmd_list[i];
-            dp();
-            break;
-        end;
-    end;
-end;
-
 
 procedure left();
 begin
@@ -278,9 +261,28 @@ Begin
         delete(lstr,c_lstr,1);
         dp();
         left();
-        setxy();
     end;
 End;
+
+procedure tab();
+var
+    s: ansistring;
+begin
+    s := lstr;
+    del_spaces(s);
+    for i:=1 to 6 do
+    begin
+        if pos(s,cmd_list[i]) = 1 then //Если нашли команду в списке команд
+        begin
+            lstr := cmd_list[i]+' ';
+            dp();
+            c_lstr := Length(lstr);
+            setxy();
+            clreol;
+            break;
+        end;
+    end;
+end;
 
 procedure key_press();
 var
@@ -291,16 +293,18 @@ begin
     begin
         clrscr;
         y_lstr := 1;
-        c_lstr:=c_lstr-1;
         dp();
         setxy();
     end;
     If (key in symbols) Then
     Begin
-        setcp();
-        insert(key,lstr,c_lstr);
-        dp();
-        setxy();
+        if length(lstr) < buf_size*2 then
+        begin
+            setcp();
+            insert(key,lstr,c_lstr);
+            dp();
+            setxy();
+        end;
     End;
     If (key = #27) Then esc;
     If (key = #13) Then enter;
@@ -321,14 +325,13 @@ begin
     y_lstr := wherey;
     c_lstr := 1;
     while(true) do
-    begin
         key_press();
-    end;
 end;
 
 begin
     my_tree := nil;
     n_cmd := 0;
+    buf_size:=80;
     prev_cmd[1] := '';
     cmd_list[1] := 'help';
     cmd_list[2] := 'insert';
