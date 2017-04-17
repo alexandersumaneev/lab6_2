@@ -227,6 +227,7 @@ begin
         dp();
         c_lstr := Length(lstr);
         setxy();
+        clreol;
     end;
 end;
 
@@ -239,6 +240,7 @@ begin
         dp();
         c_lstr := Length(lstr);
         setxy();
+        clreol;
     end;
 end;
 
@@ -295,6 +297,7 @@ begin
         y_lstr := 1;
         dp();
         setxy();
+        backspace();
     end;
     If (key in symbols) Then
     Begin
